@@ -1,0 +1,208 @@
+# ============================================
+# PARTE 1: CONFIGURAÇÕES BÁSICAS DA PIPELINE
+# ============================================
+
+name: DevSecOps Security Pipeline
+# Nome que aparece na aba Actions do GitHub
+
+# --------------------------------------------
+# QUANDO esta pipeline vai executar?
+# --------------------------------------------
+on:
+  push:
+    branches: [ main, master ]
+    # Executa quando você faz commit na branch main ou master
+    
+  pull_request:
+    branches: [ main, master ]
+    # Executa quando alguém abre um Pull Request para main ou master
+
+# ============================================
+# PARTE 2: JOBS (TRABALHOS) DA PIPELINE
+# ============================================
+
+jobs:
+  # --------------------------------------------
+  # JOB 1: VERIFICAÇÃO DE SEGURANÇA
+  # --------------------------------------------
+  security-scan:
+    name: Security Check
+    # Nome amigável que aparece na interface
+    
+    runs-on: ubuntu-latest
+    # Máquina virtual onde o código vai rodar (Linux Ubuntu)
+    
+    steps:
+      # ========================================
+      # PASSO 1: BAIXAR O CÓDIGO DO REPOSITÓRIO
+      # ========================================
+      - name: Checkout code
+        uses: actions/checkout@v3
+        # Ação pronta do GitHub que baixa seu código
+        
+        with:
+          fetch-depth: 0
+          # Baixa TODO o histórico de commits (não só o último)
+          # Necessário para o Gitleaks verificar todo o histórico
+      
+      # ========================================
+      # PASSO 2: INSTALAR O GITLEAKS
+      # ========================================
+      - name: Install Gitleaks
+        run: |
+          # O símbolo | significa "execute vários comandos"
+          
+          # 1. Baixa o arquivo .tar.gz do Gitleaks
+          wget https://github.com/gitleaks/gitleaks/releases/download/v8.18.0/gitleaks_8.18.0_linux_x64.tar.gz
+          
+          # 2. Extrai o arquivo compactado
+          tar -xzf gitleaks_8.18.0_linux_x64.tar.gz
+          
+          # 3. Move o executável para /usr/local/bin (pasta de programas)
+          sudo mv gitleaks /usr/local/bin/
+          
+          # 4. Verifica se foi instalado corretamente
+          gitleaks version
+      
+      # ========================================
+      # PASSO 3: ESCANEAR POR SENHAS E SECRETS
+      # ========================================
+      - name: Scan for secrets
+        run: |
+          echo "Starting security scan..."
+          # Mostra mensagem no log
+          
+          # COMANDO PRINCIPAL DO GITLEAKS:
+          gitleaks detect \
+            --source . \
+            # --source . = escaneia a pasta atual (todo o código)
+            
+            --verbose \
+            # --verbose = mostra detalhes no log
+            
+            --report-format json \
+            # --report-format json = salva resultado em JSON
+            
+            --report-path gitleaks-report.json \
+            # --report-path = onde salvar o relatório
+            
+            || SCAN_FAILED=true
+            # || significa "OU": se o comando falhar, 
+            # marca SCAN_FAILED=true (não para a execução ainda)
+          
+          # VERIFICA SE ENCONTROU ALGUM PROBLEMA:
+          if [ "$SCAN_FAILED" = "true" ]; then
+            # Se SCAN_FAILED for true:
+            
+            echo "SECURITY ALERT: Secrets detected!"
+            # Mostra alerta
+            
+            echo "Report details:"
+            cat gitleaks-report.json
+            # cat = mostra o conteúdo do arquivo JSON no log
+            
+            exit 1
+            # exit 1 = PARA A PIPELINE COM ERRO
+            # Qualquer número diferente de 0 = erro
+          else
+            # Se NÃO encontrou problemas:
+            echo "No secrets detected. Code approved!"
+            # Código aprovado!
+          fi
+      
+      # ========================================
+      # PASSO 4: FAZER UPLOAD DO RELATÓRIO
+      # ========================================
+      - name: Upload security report
+        if: failure()
+        # if: failure() = só executa se algum passo anterior FALHOU
+        
+        uses: actions/upload-artifact@v4
+        # Ação que faz upload de arquivos
+        
+        with:
+          name: security-report
+          # Nome do arquivo que vai aparecer no GitHub
+          
+          path: gitleaks-report.json
+          # Caminho do arquivo para fazer upload
+  
+  # --------------------------------------------
+  # JOB 2: BUILD E TESTES
+  # --------------------------------------------
+  build-and-test:
+    name: Build and Test
+    
+    needs: security-scan
+    # ⚠️ IMPORTANTE: needs = SÓ EXECUTA SE security-scan PASSAR
+    # Se security-scan falhar, este job NEM COMEÇA
+    
+    runs-on: ubuntu-latest
+    
+    steps:
+      # ========================================
+      # PASSO 1: BAIXAR O CÓDIGO
+      # ========================================
+      - name: Checkout code
+        uses: actions/checkout@v3
+        # Mesmo do primeiro job - baixa o código
+      
+      # ========================================
+      # PASSO 2: INSTALAR PYTHON
+      # ========================================
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        # Ação que instala Python na máquina virtual
+        
+        with:
+          python-version: '3.9'
+          # Versão do Python a instalar
+      
+      # ========================================
+      # PASSO 3: INSTALAR DEPENDÊNCIAS
+      # ========================================
+      - name: Install dependencies
+        run: |
+          # Atualiza o pip (gerenciador de pacotes Python)
+          python -m pip install --upgrade pip
+          
+          # Se existir arquivo requirements.txt, instala as dependências
+          if [ -f requirements.txt ]; then 
+            pip install -r requirements.txt
+          fi
+      
+      # ========================================
+      # PASSO 4: EXECUTAR A APLICAÇÃO
+      # ========================================
+      - name: Run application
+        run: |
+          echo "Running application..."
+          # Mostra mensagem
+          
+          python app.py
+          # Executa o arquivo app.py
+          
+          echo "Deploy successful!"
+          # Simula um deploy bem-sucedido
+
+
+# ============================================
+# RESUMO DO FLUXO:
+# ============================================
+#
+# 1. CÓDIGO É COMMITADO → Pipeline inicia
+#
+# 2. JOB 1 (Security Check):
+#    ├─ Baixa código
+#    ├─ Instala Gitleaks
+#    ├─ Escaneia por secrets
+#    └─ Se encontrar: PARA TUDO ❌
+#        Se não encontrar: Continua ✅
+#
+# 3. JOB 2 (Build and Test):
+#    └─ SÓ EXECUTA se Job 1 passou
+#    ├─ Instala Python
+#    ├─ Instala dependências
+#    └─ Executa aplicação
+#
+# ============================================
