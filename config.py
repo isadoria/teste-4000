@@ -5,11 +5,11 @@
 # ------------------------------------------
 # PROBLEMA 1: Senha do Banco de Dados Exposta
 # ------------------------------------------
-DATABASE_CONFIG = {
-    "host": "localhost",          # OK - endereço do servidor
-    "user": "admin",              # OK - nome de usuário
-    "password": "senha123456",    #  PROBLEMA! Senha exposta no código
-    "database": "producao"        # OK - nome do banco
+#DATABASE_CONFIG = {
+ #   "host": "localhost",          # OK - endereço do servidor
+  #  "user": "admin",              # OK - nome de usuário
+   # "password": "senha123456",    #  PROBLEMA! Senha exposta no código
+    #"database": "producao"        # OK - nome do banco
 }
 # POR QUE É PERIGOSO:
 # - Qualquer pessoa com acesso ao código vê a senha
@@ -19,7 +19,7 @@ DATABASE_CONFIG = {
 # ------------------------------------------
 # PROBLEMA 2: API Key da Stripe Exposta
 # ------------------------------------------
-API_KEY = "sk_live_1234567890abcdefghijklmnop"
+#API_KEY = "sk_live_1234567890abcdefghijklmnop"
 # PROBLEMA CRÍTICO!
 # 
 # O QUE É: Token de acesso da Stripe (sistema de pagamentos)
@@ -37,7 +37,7 @@ API_KEY = "sk_live_1234567890abcdefghijklmnop"
 # ------------------------------------------
 # PROBLEMA 3: Secret Key da AWS Exposta
 # ------------------------------------------
-AWS_SECRET = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+#AWS_SECRET = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
 #  PROBLEMA GRAVÍSSIMO!
 #
 # O QUE É: Chave secreta da Amazon Web Services
@@ -55,7 +55,7 @@ AWS_SECRET = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
 # ------------------------------------------
 # Esta linha é segura (apenas imprime mensagem)
 # ------------------------------------------
-print("Configurações carregadas")
+#print("Configurações carregadas")
 #  OK - não tem informação sensível
 
 
@@ -81,17 +81,17 @@ print("Configurações carregadas")
 # ==========================================
 # COMO DEVERIA SER (VERSÃO SEGURA):
 # ==========================================
-# import os
+ import os
 #
-# DATABASE_CONFIG = {
-#     "host": os.getenv("DB_HOST"),
-#     "user": os.getenv("DB_USER"),
-#     "password": os.getenv("DB_PASSWORD"),  #  Vem de variável
-#     "database": os.getenv("DB_NAME")
-# }
+ DATABASE_CONFIG = {
+     "host": os.getenv("DB_HOST"),
+     "user": os.getenv("DB_USER"),
+     "password": os.getenv("DBPASSWORD"),  #  Vem de variável
+     "database": os.getenv("DB_NAME")
+ }
 #
-# API_KEY = os.getenv("STRIPE_API_KEY")     #  Vem de variável
-# AWS_SECRET = os.getenv("AWS_SECRET_KEY")  #  Vem de variável
+ API_KEY = os.getenv("API_KEY")     #  Vem de variável
+AWS_SECRET = os.getenv("AWSSECRET")  #  Vem de variável
 #
 # As variáveis ficam em:
 # - Arquivo .env (não commitado no Git)
