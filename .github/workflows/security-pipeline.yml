@@ -148,6 +148,16 @@ jobs:
           echo "Deploy successful!"
           # Em produção, aqui faria o deploy real
 
+          env:
+            DBPASSWORD: ${{ secrets.DB_PASSWORD }}
+            API_KEY: ${{ secrets.STRIPE_API_KEY }}
+            AWSSECRET: ${{ secrets.AWS_SECRET_KEY }}
+           run: |
+            echo "Running application..."
+            python config.py
+            python app.py
+            echo "Deploy successful!"
+
 # ==========================================
 # FLUXO COMPLETO DA PIPELINE:
 # ==========================================
